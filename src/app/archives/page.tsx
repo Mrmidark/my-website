@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { saveFile, getFile, deleteFile } from "@/lib/fileStorage"
 
 interface Archive {
   id: number
@@ -73,7 +74,7 @@ export default function ArchivesPage() {
     const fileName = selectedFile.name
     const fileSize = formatFileSize(selectedFile.size)
     
-    await fetch("/api/archives", {
+    const res = await fetch("/api/archives", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -83,6 +84,10 @@ export default function ArchivesPage() {
         date: today
       })
     })
+    const newArchive = await res.json()
+    
+    await saveFile(newArchive.id, selectedFile)
+    
     setShowModal(false)
     setSelectedFile(null)
     setCategory("报告")
@@ -96,6 +101,7 @@ export default function ArchivesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id })
     })
+    await deleteFile(id)
     fetchArchives()
   }
 
@@ -104,17 +110,20 @@ export default function ArchivesPage() {
     setShowViewModal(true)
   }
 
-  const handleDownload = (archive: Archive) => {
-    const content = `档案名称: ${archive.name}\n分类: ${archive.category}\n日期: ${archive.date}\n大小: ${archive.size}\n\n这是档案 "${archive.name}" 的内容。\n\n此文件由管理系统生成。`
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${archive.name}.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+  const handleDownload = async (archive: Archive) => {
+    const file = await getFile(archive.id)
+    if (file) {
+      const url = URL.createObjectURL(file)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = file.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } else {
+      alert("文件不存在或已被删除")
+    }
   }
 
   const getCategoryColor = (category: string) => {
