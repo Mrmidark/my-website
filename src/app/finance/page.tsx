@@ -135,6 +135,8 @@ export default function FinancePage() {
       comparison = a.type.localeCompare(b.type)
     } else if (sortBy === "amount") {
       comparison = a.amount - b.amount
+    } else if (sortBy === "category") {
+      comparison = a.category.localeCompare(b.category)
     }
     
     return sortOrder === "asc" ? comparison : -comparison
@@ -219,7 +221,19 @@ export default function FinancePage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">项目</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">分类</th>
+                <th 
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort("category")}
+                >
+                  <div className="flex items-center gap-1">
+                    分类
+                    {sortBy === "category" && (
+                      <svg className={`w-4 h-4 transition-transform ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </th>
                 <th 
                   className="px-6 py-4 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
                   onClick={() => handleSort("type")}
