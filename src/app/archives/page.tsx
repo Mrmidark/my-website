@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 
 interface Archive {
   id: number
@@ -17,11 +17,10 @@ export default function ArchivesPage() {
   const [viewArchive, setViewArchive] = useState<Archive | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("全部分类")
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "报告",
-    size: ""
-  })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [category, setCategory] = useState("报告")
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchArchives()
@@ -33,20 +32,60 @@ export default function ArchivesPage() {
     setArchives(data)
   }
 
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 B"
+    const k = 1024
+    const sizes = ["B", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+  }
+
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      handleFileSelect(file)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!selectedFile) {
+      alert("请选择文件")
+      return
+    }
     const today = new Date().toISOString().split('T')[0]
+    const fileName = selectedFile.name
+    const fileSize = formatFileSize(selectedFile.size)
+    
     await fetch("/api/archives", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...formData,
-        date: today,
-        size: formData.size || "1.0 MB"
+        name: fileName,
+        category: category,
+        size: fileSize,
+        date: today
       })
     })
     setShowModal(false)
-    setFormData({ name: "", category: "报告", size: "" })
+    setSelectedFile(null)
+    setCategory("报告")
     fetchArchives()
   }
 
@@ -217,22 +256,52 @@ export default function ArchivesPage() {
           <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 animate-fade-in" onClick={e => e.stopPropagation()}>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">上传文件</h2>
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">文件名称</label>
+              <div
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
+                  isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="请输入文件名称"
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleFileSelect(file)
+                  }}
                 />
+                {selectedFile ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">{selectedFile.name}</p>
+                      <p className="text-sm text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-gray-600 mb-1">点击或拖拽文件到此处上传</p>
+                    <p className="text-sm text-gray-400">支持所有文件类型</p>
+                  </>
+                )}
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">文件分类</label>
                 <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option>报告</option>
@@ -242,27 +311,24 @@ export default function ArchivesPage() {
                   <option>财务</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">文件大小</label>
-                <input
-                  type="text"
-                  value={formData.size}
-                  onChange={(e) => setFormData({...formData, size: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="例如: 2.5 MB"
-                />
-              </div>
+              
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false)
+                    setSelectedFile(null)
+                  }}
                   className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 btn-primary px-4 py-3 text-white rounded-xl"
+                  disabled={!selectedFile}
+                  className={`flex-1 px-4 py-3 text-white rounded-xl transition-colors ${
+                    selectedFile ? 'btn-primary' : 'bg-gray-300 cursor-not-allowed'
+                  }`}
                 >
                   确认上传
                 </button>
