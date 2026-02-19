@@ -13,6 +13,8 @@ interface Archive {
 export default function ArchivesPage() {
   const [archives, setArchives] = useState<Archive[]>([])
   const [showModal, setShowModal] = useState(false)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [viewArchive, setViewArchive] = useState<Archive | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("全部分类")
   const [formData, setFormData] = useState({
@@ -56,6 +58,24 @@ export default function ArchivesPage() {
       body: JSON.stringify({ id })
     })
     fetchArchives()
+  }
+
+  const handleView = (archive: Archive) => {
+    setViewArchive(archive)
+    setShowViewModal(true)
+  }
+
+  const handleDownload = (archive: Archive) => {
+    const content = `档案名称: ${archive.name}\n分类: ${archive.category}\n日期: ${archive.date}\n大小: ${archive.size}\n\n这是档案 "${archive.name}" 的内容。\n\n此文件由管理系统生成。`
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${archive.name}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const getCategoryColor = (category: string) => {
@@ -153,13 +173,19 @@ export default function ArchivesPage() {
                 <td className="px-6 py-4 text-gray-600">{archive.date}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleView(archive)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
                     </button>
-                    <button className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleDownload(archive)}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
@@ -242,6 +268,62 @@ export default function ArchivesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showViewModal && viewArchive && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowViewModal(false)}>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
+                <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{viewArchive.name}</h2>
+                <span className={`status-badge ${getCategoryColor(viewArchive.category)} mt-1`}>
+                  {viewArchive.category}
+                </span>
+              </div>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div className="flex justify-between py-3 border-b border-gray-100">
+                <span className="text-gray-600">文件大小</span>
+                <span className="font-medium text-gray-900">{viewArchive.size}</span>
+              </div>
+              <div className="flex justify-between py-3 border-b border-gray-100">
+                <span className="text-gray-600">上传日期</span>
+                <span className="font-medium text-gray-900">{viewArchive.date}</span>
+              </div>
+              <div className="flex justify-between py-3 border-b border-gray-100">
+                <span className="text-gray-600">文件状态</span>
+                <span className="text-green-600 font-medium">正常</span>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                关闭
+              </button>
+              <button
+                onClick={() => {
+                  handleDownload(viewArchive)
+                  setShowViewModal(false)
+                }}
+                className="flex-1 btn-primary px-4 py-3 text-white rounded-xl flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                下载文件
+              </button>
+            </div>
           </div>
         </div>
       )}
