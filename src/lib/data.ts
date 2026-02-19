@@ -13,6 +13,7 @@ export interface FinanceRecord {
   date: string
   type: string
   category: string
+  voucherUrl?: string
 }
 
 let archives: Archive[] = [
