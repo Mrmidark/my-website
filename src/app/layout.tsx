@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { LogoutButton } from "@/components/logout-button";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,15 +57,7 @@ async function Nav() {
             </Link>
             
             {session ? (
-              <form action="/api/auth/signout" method="POST">
-                <input type="hidden" name="callbackUrl" value="/" />
-                <button type="submit" className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  退出
-                </button>
-              </form>
+              <LogoutButton />
             ) : (
               <Link href="/login" className="btn-primary px-5 py-2 text-white rounded-lg flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
