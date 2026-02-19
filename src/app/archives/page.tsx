@@ -16,6 +16,9 @@ export default function ArchivesPage() {
   const [showModal, setShowModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [viewArchive, setViewArchive] = useState<Archive | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewType, setPreviewType] = useState<string>("")
+  const [previewContent, setPreviewContent] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("全部分类")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -105,8 +108,52 @@ export default function ArchivesPage() {
     fetchArchives()
   }
 
-  const handleView = (archive: Archive) => {
+  const getFileExtension = (filename: string): string => {
+    return filename.split('.').pop()?.toLowerCase() || ''
+  }
+
+  const getPreviewType = (filename: string): string => {
+    const ext = getFileExtension(filename)
+    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico']
+    const pdfExts = ['pdf']
+    const textExts = ['txt', 'json', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'htm', 'md', 'xml', 'csv', 'log', 'yaml', 'yml']
+    const videoExts = ['mp4', 'webm', 'ogg', 'mov']
+    const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'flac']
+    
+    if (imageExts.includes(ext)) return 'image'
+    if (pdfExts.includes(ext)) return 'pdf'
+    if (textExts.includes(ext)) return 'text'
+    if (videoExts.includes(ext)) return 'video'
+    if (audioExts.includes(ext)) return 'audio'
+    return 'unknown'
+  }
+
+  const handleView = async (archive: Archive) => {
     setViewArchive(archive)
+    setPreviewUrl(null)
+    setPreviewContent("")
+    
+    const file = await getFile(archive.id)
+    if (!file) {
+      setPreviewType("notfound")
+      setShowViewModal(true)
+      return
+    }
+    
+    const type = getPreviewType(archive.name)
+    setPreviewType(type)
+    
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
+    
+    if (type === 'text') {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setPreviewContent(e.target?.result as string || "")
+      }
+      reader.readAsText(file)
+    }
+    
     setShowViewModal(true)
   }
 
@@ -348,56 +395,101 @@ export default function ArchivesPage() {
       )}
 
       {showViewModal && viewArchive && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowViewModal(false)}>
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 animate-fade-in" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4" onClick={() => {
+          setShowViewModal(false)
+          if (previewUrl) URL.revokeObjectURL(previewUrl)
+        }}>
+          <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="font-bold text-gray-900">{viewArchive.name}</h2>
+                  <p className="text-sm text-gray-500">{viewArchive.size} · {viewArchive.date}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">{viewArchive.name}</h2>
-                <span className={`status-badge ${getCategoryColor(viewArchive.category)} mt-1`}>
-                  {viewArchive.category}
-                </span>
-              </div>
-            </div>
-            
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between py-3 border-b border-gray-100">
-                <span className="text-gray-600">文件大小</span>
-                <span className="font-medium text-gray-900">{viewArchive.size}</span>
-              </div>
-              <div className="flex justify-between py-3 border-b border-gray-100">
-                <span className="text-gray-600">上传日期</span>
-                <span className="font-medium text-gray-900">{viewArchive.date}</span>
-              </div>
-              <div className="flex justify-between py-3 border-b border-gray-100">
-                <span className="text-gray-600">文件状态</span>
-                <span className="text-green-600 font-medium">正常</span>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                关闭
-              </button>
               <button
                 onClick={() => {
-                  handleDownload(viewArchive)
                   setShowViewModal(false)
+                  if (previewUrl) URL.revokeObjectURL(previewUrl)
                 }}
-                className="flex-1 btn-primary px-4 py-3 text-white rounded-xl flex items-center justify-center gap-2"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-                下载文件
               </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-6 bg-gray-50">
+              {previewType === 'notfound' && (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-gray-500">文件不存在或已被删除</p>
+                </div>
+              )}
+              
+              {previewType === 'image' && previewUrl && (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <img src={previewUrl} alt={viewArchive.name} className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg" />
+                </div>
+              )}
+              
+              {previewType === 'pdf' && previewUrl && (
+                <div className="w-full h-[70vh]">
+                  <iframe src={previewUrl} className="w-full h-full rounded-lg border border-gray-200" title="PDF预览" />
+                </div>
+              )}
+              
+              {previewType === 'text' && (
+                <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-[70vh]">
+                  <pre className="text-gray-100 text-sm font-mono whitespace-pre-wrap">{previewContent}</pre>
+                </div>
+              )}
+              
+              {previewType === 'video' && previewUrl && (
+                <div className="flex items-center justify-center">
+                  <video src={previewUrl} controls className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
+                </div>
+              )}
+              
+              {previewType === 'audio' && previewUrl && (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <div className="w-32 h-32 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center mb-8">
+                    <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                  </div>
+                  <audio src={previewUrl} controls className="w-full max-w-md" />
+                </div>
+              )}
+              
+              {previewType === 'unknown' && (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-gray-500 mb-4">此文件类型暂不支持在线预览</p>
+                  <button
+                    onClick={() => {
+                      handleDownload(viewArchive)
+                      setShowViewModal(false)
+                    }}
+                    className="btn-primary px-6 py-2 text-white rounded-lg flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    下载文件
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
