@@ -1,11 +1,62 @@
+"use client"
+
+import { useState, useEffect } from "react"
+
+interface Archive {
+  id: number
+  name: string
+  date: string
+  category: string
+  size: string
+}
+
 export default function ArchivesPage() {
-  const archives = [
-    { id: 1, name: "2024年度工作报告", date: "2024-12-01", category: "报告", size: "2.3 MB" },
-    { id: 2, name: "项目合同文档", date: "2024-11-15", category: "合同", size: "1.8 MB" },
-    { id: 3, name: "会议纪要-第3季度", date: "2024-10-20", category: "会议", size: "856 KB" },
-    { id: 4, name: "员工培训资料", date: "2024-10-10", category: "培训", size: "5.2 MB" },
-    { id: 5, name: "财务审计报告", date: "2024-09-30", category: "财务", size: "3.1 MB" },
-  ]
+  const [archives, setArchives] = useState<Archive[]>([])
+  const [showModal, setShowModal] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("全部分类")
+  const [formData, setFormData] = useState({
+    name: "",
+    category: "报告",
+    size: ""
+  })
+
+  useEffect(() => {
+    fetchArchives()
+  }, [])
+
+  const fetchArchives = async () => {
+    const res = await fetch("/api/archives")
+    const data = await res.json()
+    setArchives(data)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const today = new Date().toISOString().split('T')[0]
+    await fetch("/api/archives", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...formData,
+        date: today,
+        size: formData.size || "1.0 MB"
+      })
+    })
+    setShowModal(false)
+    setFormData({ name: "", category: "报告", size: "" })
+    fetchArchives()
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("确定要删除此档案吗？")) return
+    await fetch("/api/archives", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id })
+    })
+    fetchArchives()
+  }
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
@@ -18,6 +69,12 @@ export default function ArchivesPage() {
     return colors[category] || "bg-gray-100 text-gray-700"
   }
 
+  const filteredArchives = archives.filter(archive => {
+    const matchesSearch = archive.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = categoryFilter === "全部分类" || archive.category === categoryFilter
+    return matchesSearch && matchesCategory
+  })
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 animate-fade-in">
       <div className="flex items-center justify-between mb-8">
@@ -25,7 +82,10 @@ export default function ArchivesPage() {
           <h1 className="text-3xl font-bold text-gray-900">档案管理</h1>
           <p className="text-gray-600 mt-1">管理系统档案资料</p>
         </div>
-        <button className="btn-primary px-5 py-2.5 text-white rounded-xl flex items-center gap-2">
+        <button 
+          onClick={() => setShowModal(true)}
+          className="btn-primary px-5 py-2.5 text-white rounded-xl flex items-center gap-2"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -42,14 +102,22 @@ export default function ArchivesPage() {
             <input
               type="text"
               placeholder="搜索档案..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <select className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select 
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
             <option>全部分类</option>
             <option>报告</option>
             <option>合同</option>
             <option>会议</option>
+            <option>培训</option>
+            <option>财务</option>
           </select>
         </div>
 
@@ -64,7 +132,7 @@ export default function ArchivesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {archives.map((archive) => (
+            {filteredArchives.map((archive) => (
               <tr key={archive.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
@@ -96,7 +164,10 @@ export default function ArchivesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
                     </button>
-                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleDelete(archive.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
@@ -107,7 +178,73 @@ export default function ArchivesPage() {
             ))}
           </tbody>
         </table>
+        
+        {filteredArchives.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            暂无档案数据
+          </div>
+        )}
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">上传文件</h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">文件名称</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="请输入文件名称"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">文件分类</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option>报告</option>
+                  <option>合同</option>
+                  <option>会议</option>
+                  <option>培训</option>
+                  <option>财务</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">文件大小</label>
+                <input
+                  type="text"
+                  value={formData.size}
+                  onChange={(e) => setFormData({...formData, size: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="例如: 2.5 MB"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 btn-primary px-4 py-3 text-white rounded-xl"
+                >
+                  确认上传
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
