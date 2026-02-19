@@ -18,6 +18,8 @@ export default function FinancePage() {
   const [showVoucherModal, setShowVoucherModal] = useState(false)
   const [selectedVoucher, setSelectedVoucher] = useState<string>("")
   const [voucherPreview, setVoucherPreview] = useState<string>("")
+  const [sortBy, setSortBy] = useState<string>("date")
+  const [sortOrder, setSortOrder] = useState<string>("desc")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
@@ -115,6 +117,29 @@ export default function FinancePage() {
     setShowVoucherModal(true)
   }
 
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+    } else {
+      setSortBy(field)
+      setSortOrder("desc")
+    }
+  }
+
+  const sortedRecords = [...records].sort((a, b) => {
+    let comparison = 0
+    
+    if (sortBy === "date") {
+      comparison = new Date(a.date).getTime() - new Date(b.date).getTime()
+    } else if (sortBy === "type") {
+      comparison = a.type.localeCompare(b.type)
+    } else if (sortBy === "amount") {
+      comparison = a.amount - b.amount
+    }
+    
+    return sortOrder === "asc" ? comparison : -comparison
+  })
+
   const totalIncome = records.filter(r => r.amount > 0).reduce((sum, r) => sum + r.amount, 0)
   const totalExpense = Math.abs(records.filter(r => r.amount < 0).reduce((sum, r) => sum + r.amount, 0))
   const balance = totalIncome - totalExpense
@@ -195,15 +220,51 @@ export default function FinancePage() {
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">项目</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">分类</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">类型</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">金额</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">日期</th>
+                <th 
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort("type")}
+                >
+                  <div className="flex items-center gap-1">
+                    类型
+                    {sortBy === "type" && (
+                      <svg className={`w-4 h-4 transition-transform ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort("amount")}
+                >
+                  <div className="flex items-center gap-1">
+                    金额
+                    {sortBy === "amount" && (
+                      <svg className={`w-4 h-4 transition-transform ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort("date")}
+                >
+                  <div className="flex items-center gap-1">
+                    日期
+                    {sortBy === "date" && (
+                      <svg className={`w-4 h-4 transition-transform ${sortOrder === "asc" ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </div>
+                </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">凭证</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {records.map((record) => (
+              {sortedRecords.map((record) => (
                 <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-gray-900 font-medium">{record.item}</td>
                   <td className="px-6 py-4">
@@ -246,7 +307,7 @@ export default function FinancePage() {
           </table>
         </div>
         
-        {records.length === 0 && (
+        {sortedRecords.length === 0 && (
           <div className="text-center py-12 text-gray-500">
             暂无财务数据
           </div>
