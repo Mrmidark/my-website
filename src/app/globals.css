@@ -87,3 +87,15 @@ input:focus, select:focus, textarea:focus {
   font-size: 12px;
   font-weight: 500;
 }
+
+.word-content h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem; }
+.word-content h2 { font-size: 1.25rem; font-weight: bold; margin-bottom: 0.75rem; }
+.word-content h3 { font-size: 1.125rem; font-weight: bold; margin-bottom: 0.5rem; }
+.word-content p { margin-bottom: 0.75rem; line-height: 1.6; }
+.word-content ul, .word-content ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+.word-content li { margin-bottom: 0.25rem; }
+.word-content table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+.word-content td, .word-content th { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: left; }
+.word-content img { max-width: 100%; height: auto; }
+.word-content strong { font-weight: bold; }
+.word-content em { font-style: italic; }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { saveFile, getFile, deleteFile } from "@/lib/fileStorage"
+import mammoth from "mammoth"
 
 interface Archive {
   id: number
@@ -116,12 +117,16 @@ export default function ArchivesPage() {
     const ext = getFileExtension(filename)
     const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico']
     const pdfExts = ['pdf']
+    const wordExts = ['doc', 'docx']
+    const excelExts = ['xls', 'xlsx']
     const textExts = ['txt', 'json', 'js', 'ts', 'jsx', 'tsx', 'css', 'html', 'htm', 'md', 'xml', 'csv', 'log', 'yaml', 'yml']
     const videoExts = ['mp4', 'webm', 'ogg', 'mov']
     const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'flac']
     
     if (imageExts.includes(ext)) return 'image'
     if (pdfExts.includes(ext)) return 'pdf'
+    if (wordExts.includes(ext)) return 'word'
+    if (excelExts.includes(ext)) return 'excel'
     if (textExts.includes(ext)) return 'text'
     if (videoExts.includes(ext)) return 'video'
     if (audioExts.includes(ext)) return 'audio'
@@ -152,6 +157,16 @@ export default function ArchivesPage() {
         setPreviewContent(e.target?.result as string || "")
       }
       reader.readAsText(file)
+    }
+    
+    if (type === 'word') {
+      const arrayBuffer = await file.arrayBuffer()
+      try {
+        const result = await mammoth.convertToHtml({ arrayBuffer })
+        setPreviewContent(result.value)
+      } catch (error) {
+        setPreviewContent("<p>无法解析此Word文档</p>")
+      }
     }
     
     setShowViewModal(true)
@@ -450,6 +465,38 @@ export default function ArchivesPage() {
               {previewType === 'text' && (
                 <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-[70vh]">
                   <pre className="text-gray-100 text-sm font-mono whitespace-pre-wrap">{previewContent}</pre>
+                </div>
+              )}
+              
+              {previewType === 'word' && (
+                <div className="bg-white rounded-lg shadow-lg overflow-auto max-h-[70vh] p-8">
+                  <div 
+                    className="word-content"
+                    dangerouslySetInnerHTML={{ __html: previewContent }} 
+                  />
+                </div>
+              )}
+              
+              {previewType === 'excel' && (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <div className="w-24 h-24 bg-green-100 rounded-xl flex items-center justify-center mb-4">
+                    <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 mb-4">Excel 文件暂不支持在线预览</p>
+                  <button
+                    onClick={() => {
+                      handleDownload(viewArchive)
+                      setShowViewModal(false)
+                    }}
+                    className="btn-primary px-6 py-2 text-white rounded-lg flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    下载文件
+                  </button>
                 </div>
               )}
               
