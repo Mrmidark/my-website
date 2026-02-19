@@ -1,6 +1,12 @@
 import { auth, signIn } from "@/auth"
+import { redirect } from "next/navigation"
 
 export default async function LoginPage() {
+  const session = await auth()
+  if (session) {
+    redirect("/")
+  }
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md animate-fade-in">
@@ -18,7 +24,7 @@ export default async function LoginPage() {
           <form
             action={async (formData) => {
               "use server"
-              await signIn("credentials", formData)
+              await signIn("credentials", formData, { redirectTo: "/" })
             }}
             className="space-y-5"
           >
@@ -61,7 +67,7 @@ export default async function LoginPage() {
           <form
             action={async () => {
               "use server"
-              await signIn("github")
+              await signIn("github", { redirectTo: "/" })
             }}
           >
             <button
